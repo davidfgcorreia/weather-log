@@ -1,0 +1,71 @@
+name: weather
+
+on:
+  schedule:
+    # Every six hours, in UTC — GitHub cron has no timezone setting. Anchored so
+    # one reading lands just after noon in Lisbon: 06:23, 12:23, 18:23, 00:23
+    # local while the country is on WEST (UTC+1). Those shift an hour earlier
+    # under winter time, which cron cannot follow.
+    #
+    # The :23 offset is deliberate. Runs queued on the hour compete with the
+    # busiest minute on the platform and get delayed the longest, or dropped.
+    - cron: "23 5,11,17,23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Never let two runs commit at the same time.
+concurrency:
+  group: weather
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Read the current temperature
+        id: weather
+        run: |
+          set -euo pipefail
+          message="$(npx tsx src/update.ts)"
+          echo "message=$message" >> "$GITHUB_OUTPUT"
+          echo "$message"
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/weather.jsonl WEATHER.md
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git commit -m "${{ steps.weather.outputs.message }}"
+
+          # Rebase before pushing: a manual `workflow_dispatch` run can overlap
+          # with a scheduled one closely enough to race, and losing a reading to
+          # a rejected push would leave a gap in the log.
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push attempt $attempt failed; retrying."
+            sleep $((attempt * 5))
+          done
+          echo "Could not push after 3 attempts."
+          exit 1

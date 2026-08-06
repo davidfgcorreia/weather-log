@@ -46,8 +46,12 @@ jobs:
       - name: Commit and push
         run: |
           set -euo pipefail
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Authored as me rather than as github-actions[bot]. The bot's address
+          # belongs to no account, so commits under it are attributed to nobody
+          # and never reach the contribution graph. The noreply form below is
+          # tied to the account, so these commits are attributed like any other.
+          git config user.name  "David Correia"
+          git config user.email "162116679+davidfgcorreia@users.noreply.github.com"
 
           git add data/weather.jsonl WEATHER.md
           if git diff --cached --quiet; then

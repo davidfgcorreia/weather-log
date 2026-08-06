@@ -61,10 +61,16 @@ Two things worth knowing if you copy this:
   likely to be dropped. GitHub does not guarantee scheduled runs fire at all
   under load, so treat a missing reading as normal rather than as a bug.
 
-## Two caveats
+## Two notes
 
-**Commits by `github-actions[bot]` do not appear on your contribution graph.**
-If you came here looking for a way to keep the squares green, this is not it.
+**The commits are authored by a person, not by `github-actions[bot]`.** The
+bot's address belongs to no GitHub account, so commits made under it are
+attributed to nobody. The workflow instead sets the author to a
+`users.noreply.github.com` address, which *is* tied to an account, so the
+commits are attributed and counted like any other. If you fork this, change
+those two lines in [`weather.yml`](.github/workflows/weather.yml) to your own
+name and noreply address — find yours under Settings → Emails. Leaving mine
+there would author your commits to me.
 
 **A reading with no temperature fails the run rather than committing a null.**
 The job exists to record a temperature; four `null °C` entries a day would be

@@ -31,3 +31,4 @@
 {"ts":"2026-08-13T06:51:25.169Z","localTime":"2026-08-13T07:45","timezone":"Europe/Lisbon","location":"Lisbon, Portugal","temperatureC":20.7,"apparentC":22.4,"windKph":9,"weatherCode":1,"description":"Mainly clear"}
 {"ts":"2026-08-13T12:04:51.898Z","localTime":"2026-08-13T13:00","timezone":"Europe/Lisbon","location":"Lisbon, Portugal","temperatureC":29.3,"apparentC":32.5,"windKph":10,"weatherCode":0,"description":"Clear sky"}
 {"ts":"2026-08-13T18:12:54.139Z","localTime":"2026-08-13T19:00","timezone":"Europe/Lisbon","location":"Lisbon, Portugal","temperatureC":26.3,"apparentC":26.5,"windKph":16.3,"weatherCode":0,"description":"Clear sky"}
+{"ts":"2026-08-14T00:02:39.393Z","localTime":"2026-08-14T01:00","timezone":"Europe/Lisbon","location":"Lisbon, Portugal","temperatureC":21.3,"apparentC":22.7,"windKph":13.6,"weatherCode":2,"description":"Partly cloudy"}

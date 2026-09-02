@@ -1,12 +1,13 @@
 # Weather log
 
-**Lisbon, Portugal** — 19.7 °C, mainly clear, as of 2026-09-01 20:45 (Europe/Lisbon).
+**Lisbon, Portugal** — 18.6 °C, partly cloudy, as of 2026-09-02 02:00 (Europe/Lisbon).
 
 Updated every six hours by [`weather.yml`](.github/workflows/weather.yml).
 Showing the last 48 readings; full history is in `data/weather.jsonl`.
 
 | Local time | Temperature | Feels like | Wind | Conditions |
 | --- | --- | --- | --- | --- |
+| 2026-09-02 02:00 | 18.6 °C | 18.9 °C | 11.3 km/h | Partly cloudy |
 | 2026-09-01 20:45 | 19.7 °C | 19.4 °C | 15.5 km/h | Mainly clear |
 | 2026-09-01 16:15 | 25.2 °C | 24.6 °C | 17.5 km/h | Clear sky |
 | 2026-09-01 11:00 | 21.5 °C | 20.7 °C | 16.2 km/h | Overcast |
@@ -54,4 +55,3 @@ Showing the last 48 readings; full history is in `data/weather.jsonl`.
 | 2026-08-20 06:45 | 20.5 °C | 23.3 °C | 3.7 km/h | Mainly clear |
 | 2026-08-20 00:30 | 21.2 °C | 23.8 °C | 4.1 km/h | Mainly clear |
 | 2026-08-19 18:45 | 25.9 °C | 27.6 °C | 7.9 km/h | Partly cloudy |
-| 2026-08-19 12:45 | 26.6 °C | 29.1 °C | 9.0 km/h | Partly cloudy |

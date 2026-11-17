@@ -1,12 +1,13 @@
 # Weather log
 
-**Lisbon, Portugal** — 20.9 °C, overcast, as of 2026-11-17 14:30 (Europe/Lisbon).
+**Lisbon, Portugal** — 19.2 °C, overcast, as of 2026-11-17 23:45 (Europe/Lisbon).
 
 Updated every six hours by [`weather.yml`](.github/workflows/weather.yml).
 Showing the last 48 readings; full history is in `data/weather.jsonl`.
 
 | Local time | Temperature | Feels like | Wind | Conditions |
 | --- | --- | --- | --- | --- |
+| 2026-11-17 23:45 | 19.2 °C | 20.3 °C | 14.3 km/h | Overcast |
 | 2026-11-17 14:30 | 20.9 °C | 21.5 °C | 16.3 km/h | Overcast |
 | 2026-11-17 00:45 | 18.6 °C | 18.4 °C | 19.1 km/h | Slight rain |
 | 2026-11-16 13:45 | 19.4 °C | 18.0 °C | 20.5 km/h | Overcast |
@@ -54,4 +55,3 @@ Showing the last 48 readings; full history is in `data/weather.jsonl`.
 | 2026-10-31 16:00 | 25.2 °C | 24.7 °C | 3.4 km/h | Mainly clear |
 | 2026-10-31 10:45 | 20.5 °C | 19.8 °C | 4.5 km/h | Clear sky |
 | 2026-10-31 02:30 | 14.1 °C | 12.5 °C | 4.2 km/h | Mainly clear |
-| 2026-10-30 21:30 | 18.1 °C | 16.8 °C | 4.4 km/h | Overcast |

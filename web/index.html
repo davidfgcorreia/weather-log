@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weather Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: control bar → stat strip → 2-col chart grid → readings table */
+  :root {
+    --bg: #f3f5f7; --panel: #ffffff; --fg: #17202a; --muted: #5d6b78; --line: #dde3e9;
+    --accent: #1f6fb2; --on-accent: #ffffff; --warm: #d0592b; --cool: #2a8fa8; --wind: #7a6bb5;
+    --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1418; --panel: #172027; --fg: #e4eaef; --muted: #8b99a6; --line: #2a3640;
+      --accent: #5aa9e6; --on-accent: #0f1418; --warm: #f08a5d; --cool: #5cc3d6; --wind: #a99be0; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 var(--sans); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px max(16px, 3vw) 48px; display: grid; gap: 20px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  h1 small { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 8px; }
+  h2 { margin: 0 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, select, input { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button:disabled { opacity: .6; cursor: progress; }
+  .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .field { display: grid; gap: 4px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font: 500 26px/1.2 var(--mono); font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .tile .v small { font-size: 14px; color: var(--muted); }
+  .tile .s { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.live { border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .grid .wide { grid-column: 1 / -1; }
+  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+  .chart { position: relative; height: 280px; }
+  .wide .chart { height: 320px; }
+  .table-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .table-head h2 { margin: 0; }
+  .scroll { overflow: auto; max-height: 460px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--panel); font-size: 12px; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; }
+  th[aria-sort="ascending"]::after { content: " ▲"; }
+  th[aria-sort="descending"]::after { content: " ▼"; }
+  td.num { font-family: var(--mono); text-align: right; }
+  th.num { text-align: right; }
+  .toast { position: fixed; right: 16px; bottom: 16px; max-width: min(420px, calc(100vw - 32px)); background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 6px; white-space: pre-wrap; font-size: 13px; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Weather Log <small id="loc">…</small></h1>
+    <div class="actions">
+      <button id="btn-live" type="button" title="Ask Open-Meteo for the current reading. Not saved to the log.">Live reading</button>
+      <button id="btn-sync" type="button" title="git pull --ff-only to fetch new readings committed by the Action">Sync from GitHub</button>
+      <button id="btn-csv" type="button" class="primary">Export CSV</button>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="Filters">
+    <div class="field">
+      <label>Range</label>
+      <div class="seg" id="presets">
+        <button type="button" data-days="7">7 d</button>
+        <button type="button" data-days="30">30 d</button>
+        <button type="button" data-days="90">90 d</button>
+        <button type="button" data-days="0" aria-pressed="true">All</button>
+      </div>
+    </div>
+    <div class="field"><label for="from">From</label><input type="date" id="from"></div>
+    <div class="field"><label for="to">To</label><input type="date" id="to"></div>
+    <div class="field">
+      <label for="metric">Metric</label>
+      <select id="metric">
+        <option value="temperatureC">Temperature</option>
+        <option value="apparentC">Feels like</option>
+        <option value="windKph">Wind</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="bucket">Group by</label>
+      <select id="bucket">
+        <option value="day">Day</option>
+        <option value="week">Week</option>
+        <option value="month">Month</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="tiles" id="tiles" aria-label="Summary"></section>
+
+  <section class="grid">
+    <div class="panel wide"><h2 id="t-series">Readings</h2><div class="chart"><canvas id="c-series"></canvas></div></div>
+    <div class="panel wide"><h2 id="t-agg">Range by day</h2><div class="chart"><canvas id="c-agg"></canvas></div></div>
+    <div class="panel"><h2 id="t-hour">Average by hour of day</h2><div class="chart"><canvas id="c-hour"></canvas></div></div>
+    <div class="panel"><h2>Conditions</h2><div class="chart"><canvas id="c-cond"></canvas></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="table-head">
+      <h2 id="t-table">Readings</h2>
+      <input type="search" id="search" placeholder="Filter by condition or date" aria-label="Filter readings">
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th data-key="localTime">Local time</th>
+          <th data-key="temperatureC" class="num">Temp °C</th>
+          <th data-key="apparentC" class="num">Feels °C</th>
+          <th data-key="windKph" class="num">Wind km/h</th>
+          <th data-key="description">Conditions</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const LABEL = { temperatureC: "Temperature", apparentC: "Feels like", windKph: "Wind" };
+const UNIT = { temperatureC: "°C", apparentC: "°C", windKph: "km/h" };
+const fmt = (v, d = 1) => (v === null || v === undefined ? "—" : Number(v).toFixed(d));
+const when = (t) => (t ? t.replace("T", " ") : "—");
+
+const state = { from: "", to: "", metric: "temperatureC", bucket: "day", rows: [], sort: { key: "localTime", dir: -1 }, live: null };
+const charts = {};
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 4500);
+}
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  return body;
+}
+
+const qs = (extra = {}) => {
+  const p = new URLSearchParams();
+  if (state.from) p.set("from", state.from);
+  if (state.to) p.set("to", state.to);
+  for (const [k, v] of Object.entries(extra)) p.set(k, v);
+  return p.toString();
+};
+
+function chart(id, config) {
+  charts[id]?.destroy();
+  const grid = css("--line"), text = css("--muted");
+  Chart.defaults.color = text;
+  Chart.defaults.font.family = css("--sans");
+  config.options = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { labels: { boxWidth: 12 } } },
+    ...config.options,
+  };
+  for (const axis of Object.values(config.options.scales || {})) {
+    axis.grid = { color: grid, ...(axis.grid || {}) };
+    axis.ticks = { color: text, ...(axis.ticks || {}) };
+  }
+  charts[id] = new Chart($(id), config);
+}
+
+function tile(k, v, unit, s, cls = "") {
+  return `<div class="tile ${cls}"><div class="k">${k}</div><div class="v">${v}${unit ? ` <small>${unit}</small>` : ""}</div><div class="s">${s}</div></div>`;
+}
+
+function renderTiles(st) {
+  const m = st.metrics[state.metric], u = UNIT[state.metric];
+  const latest = state.rows[state.rows.length - 1];
+  const live = state.live;
+  $("tiles").innerHTML = [
+    live
+      ? tile("Live now", fmt(live.temperatureC), "°C", `${live.description} · ${when(live.localTime)}`, "live")
+      : tile("Latest logged", fmt(latest?.temperatureC), "°C", latest ? `${latest.description} · ${when(latest.localTime)}` : "No readings"),
+    tile(`Mean ${LABEL[state.metric].toLowerCase()}`, fmt(m.mean), u, `median ${fmt(m.median)} ${u}`),
+    tile("Highest", fmt(m.max), u, { temperatureC: when(st.hottest?.localTime), windKph: when(st.windiest?.localTime) }[state.metric] ?? ""),
+    tile("Lowest", fmt(m.min), u, state.metric === "temperatureC" ? when(st.coldest?.localTime) : ""),
+    tile("Readings", st.count, "", `${when(st.first).slice(0, 10)} → ${when(st.last).slice(0, 10)}`),
+  ].join("");
+}
+
+function renderSeries() {
+  const rows = state.rows;
+  $("t-series").textContent = `Readings (${rows.length})`;
+  const isWind = state.metric === "windKph";
+  chart("c-series", {
+    type: "line",
+    data: {
+      labels: rows.map((r) => when(r.localTime)),
+      datasets: isWind
+        ? [{ label: "Wind km/h", data: rows.map((r) => r.windKph), borderColor: css("--wind"), backgroundColor: css("--wind") + "33", fill: true, pointRadius: 0, tension: .25, borderWidth: 1.5 }]
+        : [
+            { label: "Temperature °C", data: rows.map((r) => r.temperatureC), borderColor: css("--warm"), backgroundColor: css("--warm") + "22", fill: true, pointRadius: 0, tension: .25, borderWidth: 1.75 },
+            { label: "Feels like °C", data: rows.map((r) => r.apparentC), borderColor: css("--cool"), pointRadius: 0, tension: .25, borderWidth: 1.25, borderDash: [4, 3] },
+          ],
+    },
+    options: { scales: { x: { ticks: { maxTicksLimit: 10, autoSkip: true, maxRotation: 0 } }, y: {} } },
+  });
+}
+
+function renderAgg(agg) {
+  const u = UNIT[state.metric];
+  $("t-agg").textContent = `${LABEL[state.metric]} range by ${state.bucket}`;
+  const color = state.metric === "windKph" ? css("--wind") : css("--warm");
+  chart("c-agg", {
+    type: "bar",
+    data: {
+      labels: agg.map((a) => a.key),
+      datasets: [
+        { type: "line", label: `Mean ${u}`, data: agg.map((a) => a.mean), borderColor: css("--fg"), pointRadius: agg.length > 60 ? 0 : 2, borderWidth: 1.5, tension: .2, order: 0 },
+        { label: `Min–max ${u}`, data: agg.map((a) => [a.min, a.max]), backgroundColor: color + "55", borderColor: color, borderWidth: 1, borderSkipped: false, order: 1 },
+      ],
+    },
+    options: {
+      scales: { x: { ticks: { maxTicksLimit: 14, maxRotation: 0 } }, y: {} },
+      plugins: { tooltip: { callbacks: { afterBody: (items) => { const a = agg[items[0].dataIndex]; return `${a.count} readings`; } } } },
+    },
+  });
+}
+
+function renderHour(hours) {
+  $("t-hour").textContent = `Average ${LABEL[state.metric].toLowerCase()} by hour of day`;
+  chart("c-hour", {
+    type: "bar",
+    data: { labels: hours.map((_, h) => String(h).padStart(2, "0")), datasets: [{ label: UNIT[state.metric], data: hours, backgroundColor: css("--accent") + "aa" }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: {}, y: { beginAtZero: state.metric === "windKph" } } },
+  });
+}
+
+function renderConditions(cond) {
+  chart("c-cond", {
+    type: "bar",
+    data: { labels: cond.map((c) => c.description), datasets: [{ label: "Readings", data: cond.map((c) => c.count), backgroundColor: css("--cool") + "aa" }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { ticks: { precision: 0 } }, y: { grid: { display: false } } } },
+  });
+}
+
+function renderTable() {
+  const term = $("search").value.trim().toLowerCase();
+  const { key, dir } = state.sort;
+  const rows = state.rows
+    .filter((r) => !term || r.description.toLowerCase().includes(term) || r.localTime.includes(term))
+    .sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (x === y) return 0;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      return (x > y ? 1 : -1) * dir;
+    });
+  $("t-table").textContent = `Readings (${rows.length})`;
+  document.querySelectorAll("th").forEach((th) => th.setAttribute("aria-sort", th.dataset.key === key ? (dir > 0 ? "ascending" : "descending") : "none"));
+  const tbody = $("rows");
+  tbody.replaceChildren();
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No readings match.</td></tr>`; return; }
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    for (const [v, num] of [[when(r.localTime), false], [fmt(r.temperatureC), true], [fmt(r.apparentC), true], [fmt(r.windKph), true], [r.description, false]]) {
+      const td = document.createElement("td"); td.textContent = v; if (num) td.className = "num"; tr.append(td);
+    }
+    tbody.append(tr);
+  }
+}
+
+async function refresh() {
+  try {
+    const [rows, st, agg, hours, cond] = await Promise.all([
+      api(`/api/readings?${qs()}`),
+      api(`/api/stats?${qs()}`),
+      api(`/api/aggregate?${qs({ bucket: state.bucket, metric: state.metric })}`),
+      api(`/api/hourly?${qs({ metric: state.metric })}`),
+      api(`/api/conditions?${qs()}`),
+    ]);
+    state.rows = rows;
+    renderTiles(st); renderSeries(); renderAgg(agg); renderHour(hours); renderConditions(cond); renderTable();
+  } catch (e) { toast(`Could not load data: ${e.message}`); }
+}
+
+// --- controls ---
+function setPreset(days) {
+  document.querySelectorAll("#presets button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.days) === days)));
+  if (!days) { state.from = state.to = ""; }
+  else {
+    const end = new Date(); const start = new Date(end); start.setDate(end.getDate() - (days - 1));
+    const iso = (d) => d.toLocaleDateString("sv-SE");
+    state.from = iso(start); state.to = iso(end);
+  }
+  $("from").value = state.from; $("to").value = state.to;
+  refresh();
+}
+$("presets").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) setPreset(Number(b.dataset.days)); });
+for (const id of ["from", "to"]) $(id).addEventListener("change", () => {
+  state[id] = $(id).value;
+  document.querySelectorAll("#presets button").forEach((b) => b.setAttribute("aria-pressed", "false"));
+  refresh();
+});
+$("metric").addEventListener("change", () => { state.metric = $("metric").value; refresh(); });
+$("bucket").addEventListener("change", () => { state.bucket = $("bucket").value; refresh(); });
+$("search").addEventListener("input", renderTable);
+document.querySelector("thead").addEventListener("click", (e) => {
+  const th = e.target.closest("th"); if (!th) return;
+  state.sort = { key: th.dataset.key, dir: state.sort.key === th.dataset.key ? -state.sort.dir : -1 };
+  renderTable();
+});
+
+$("btn-csv").addEventListener("click", () => { location.href = `/api/export.csv?${qs()}`; });
+
+async function busy(btn, label, fn) {
+  const old = btn.textContent; btn.disabled = true; btn.textContent = label;
+  try { await fn(); } catch (e) { toast(e.message); } finally { btn.disabled = false; btn.textContent = old; }
+}
+$("btn-live").addEventListener("click", () => busy($("btn-live"), "Fetching…", async () => {
+  state.live = await api("/api/live");
+  toast(`Live: ${state.live.temperatureC} °C, ${state.live.description}`);
+  await refresh();
+}));
+$("btn-sync").addEventListener("click", () => busy($("btn-sync"), "Syncing…", async () => {
+  const r = await api("/api/sync", { method: "POST" });
+  toast(`${r.added} new reading${r.added === 1 ? "" : "s"}\n${r.output}`);
+  await refresh();
+}));
+
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", refresh);
+
+api("/api/meta").then((m) => { $("loc").textContent = `${m.location} · ${m.timezone}`; }).catch(() => {});
+refresh();
+</script>
+</body>
+</html>

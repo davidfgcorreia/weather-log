@@ -9,6 +9,7 @@
   },
   "scripts": {
     "update": "tsx src/update.ts",
+    "dashboard": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

@@ -6,6 +6,7 @@
  * Prints the commit subject to stdout so the workflow can use it.
  */
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
 import { config } from "./config.js";
 import { appendJsonl, readJsonl } from "./store.js";
 import {
@@ -26,7 +27,7 @@ export function apiUrl(): string {
   return `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
 }
 
-async function fetchWeather(attempts = 3): Promise<OpenMeteoResponse> {
+export async function fetchWeather(attempts = 3): Promise<OpenMeteoResponse> {
   let lastError: unknown;
   for (let i = 1; i <= attempts; i++) {
     try {
@@ -65,7 +66,10 @@ async function main(): Promise<void> {
   console.log(commitMessage(record));
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+// Run only when executed directly, so the dashboard server can import fetchWeather.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
